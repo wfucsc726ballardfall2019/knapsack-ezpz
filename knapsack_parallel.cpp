@@ -116,7 +116,7 @@ void build_table(vector<int>& K, const vector<int>& wts, const vector<int>& vals
     int w, j, numItems = wts.size();
 
     // initialize first column
-    #pragma omp parallel for
+    #pragma omp parallel for    // parallelized
     for(w = 0; w <= W; w++) {
         if( w < wts[0]) {
             K[w] = 0;
@@ -126,10 +126,9 @@ void build_table(vector<int>& K, const vector<int>& wts, const vector<int>& vals
     }
 
     // loop over 2D table
-    for(j = 1; j < numItems; j++) {
-        #pragma omp parallel for
+    for(j = 1; j < numItems; j++) {     // here the cache locality is achieved
+        #pragma omp parallel for    // only the inner loop can be parallelized due to dependency
         for(w = 0; w <= W; w++) {
-            //cout << "Num of omp = \t" << omp_get_num_threads() << endl;
             // if item doesn't fit or not including it is better
             if(w < wts[j] || K[li(w,j-1,W)] >= vals[j] + K[li(w-wts[j],j-1,W)]) {
                 K[li(w,j,W)] = K[li(w,j-1,W)];
@@ -146,7 +145,8 @@ void backtrack(const vector<int>& K, const vector<int>& wts, vector<bool>& used,
     int j, w = W, n = used.size();
     
     // backtrack starting from bottom right corner
-    for (j = n-1; j > 0; j--) {
+    // can't be parallelized because dependency on w
+    for(j = n-1; j > 0; j--) {
         // see if item is used
         used[j] = (K[li(w,j,W)] != K[li(w,j-1,W)]);
         // if so decrease remaining capacity
@@ -177,7 +177,7 @@ int compute_table(vector<int>& K, const vector<int>& wts, const vector<int>& val
         // switch curr and prev columns each iteration to avoid copy
         curr = j%2;
         prev = (j+1)%2;
-        #pragma omp parallel for
+        #pragma omp parallel for        // parallelized here
         for(w = 0; w <= W; w++) {
             // if item doesn't fit or not including it is better
             if(w < wts[j] || K[li(w,prev,W)] >= vals[j] + K[li(w-wts[j],prev,W)]) {
@@ -220,7 +220,7 @@ int findk(vector<int>&K, vector<int>&M, const vector<int>& wts, const vector<int
     int w, j, numItems = last-first+1, mid = (first+last) / 2, curr, prev;
 
     // initialize columns for 1st and mid element
-    #pragma omp parallel for
+    #pragma omp parallel for    // parallelized
     for(w = 0; w <= W; w++) {
         if(w < wts[first]) {
             K[li(w,first%2,W)] = 0;
@@ -237,7 +237,7 @@ int findk(vector<int>&K, vector<int>&M, const vector<int>& wts, const vector<int
         curr = j%2;
         prev = (j+1)%2;
 
-        #pragma omp parallel for
+        #pragma omp parallel for    // parallelized 
         for(w = 0; w <= W; w++) {
         
             // if item doesn't fit or not including it is better
@@ -275,8 +275,11 @@ int convert_path_to_used(vector<bool>& used, const vector<int>& path, const vect
         kValue += vals[n-1];
     }
     // handle other items
+    
+    #pragma omp parallel for    // parallelized
     for(int j = n-2; j > 0; j--) {
         // if capacity index didn't change, we didn't include item
+        #pragma omp critical (convert_to_path)  // make this critical section because kValue is dependent
         if(path[j] == path[j-1]) {
             used[j] = false;
         // else we included it, count up its value
