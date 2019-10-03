@@ -275,10 +275,8 @@ int convert_path_to_used(vector<bool>& used, const vector<int>& path, const vect
         kValue += vals[n-1];
     }
     // handle other items
-    #pragma omp parallel for
     for(int j = n-2; j > 0; j--) {
         // if capacity index didn't change, we didn't include item
-        #pragma omp critical
         if(path[j] == path[j-1]) {
             used[j] = false;
         // else we included it, count up its value
