@@ -125,7 +125,7 @@ void build_table(vector<int>& K, const vector<int>& wts, const vector<int>& vals
     }
 
     // loop over 2D table
-    for(j = 1; j < numItems; j++) {
+    for(j = 1; j < numItems; j++) {     // here the loop order is swapped to achieve spatial locality
         for(w = 0; w <= W; w++) {
             // if item doesn't fit or not including it is better
             if(w < wts[j] || K[li(w,j-1,W)] >= vals[j] + K[li(w-wts[j],j-1,W)]) {
@@ -143,7 +143,7 @@ void backtrack(const vector<int>& K, const vector<int>& wts, vector<bool>& used,
     int j, w = W, n = used.size();
     
     // backtrack starting from bottom right corner
-    for (j = n-1; j > 0; j--) {
+    for(j = n-1; j > 0; j--) {
         // see if item is used
         used[j] = (K[li(w,j,W)] != K[li(w,j-1,W)]);
         // if so decrease remaining capacity
